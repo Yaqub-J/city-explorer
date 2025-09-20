@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router";
+import { useState } from "react";
 
 type Props = {
   drawerWidth: number;
@@ -24,6 +25,7 @@ function Header({ drawerWidth, handleDrawerToggle }: Props) {
   const { setTheme, theme } = useTheme();
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleSignOut = async () => {
     await signOut();
@@ -37,6 +39,15 @@ function Header({ drawerWidth, handleDrawerToggle }: Props) {
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      // Navigate to explore page with search query
+      navigate(`/explore?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+    }
   };
 
   return (
@@ -57,13 +68,15 @@ function Header({ drawerWidth, handleDrawerToggle }: Props) {
           </Button>
 
           {/* Search Bar */}
-          <div className="hidden md:flex relative w-64">
+          <form onSubmit={handleSearch} className="hidden md:flex relative w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Search businesses, events..."
               className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
-          </div>
+          </form>
         </div>
 
         {/* Right side - Actions and user menu */}

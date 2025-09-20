@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapPin, Calendar, Clock } from "lucide-react";
-import { useNavigate } from "react-router";
+import { Badge } from "@/components/ui/badge";
+import { MapPin, Calendar, Clock, Search, MapIcon, Loader2 } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router";
+import { usePlaces } from "@/hooks/usePlaces";
+import type { GooglePlace } from "@/services/maps/placesService";
+import PlaceCard from "@/components/places/PlaceCard";
+import PlaceDetails from "@/components/places/PlaceDetails";
 
 interface Event {
   id: number;
@@ -24,13 +29,6 @@ interface Event {
   price?: number; // in kobo
 }
 
-interface Place {
-  id: number;
-  name: string;
-  category: string;
-  location: string;
-  image: string;
-}
 
 interface Collection {
   id: number;
@@ -55,6 +53,27 @@ const EventDiscoveryApp: React.FC = () => {
     tickets: "1",
   });
 
+  // Google Places state
+  const [selectedPlace, setSelectedPlace] = useState<GooglePlace | null>(null);
+  const [showPlaceDetails, setShowPlaceDetails] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("restaurants");
+  const { places: googlePlaces, loading, error, searchByQuery, getPlacesByCategory, getCurrentLocation } = usePlaces();
+
+  // Popular categories for Abuja
+  const categories = [
+    { id: "restaurants", name: "Restaurants", icon: "🍽️" },
+    { id: "cafes", name: "Cafés", icon: "☕" },
+    { id: "hotels", name: "Hotels", icon: "🏨" },
+    { id: "shopping", name: "Shopping", icon: "🛍️" },
+    { id: "entertainment", name: "Entertainment", icon: "🎬" },
+    { id: "healthcare", name: "Healthcare", icon: "🏥" },
+    { id: "banks", name: "Banks", icon: "🏦" },
+    { id: "pharmacies", name: "Pharmacies", icon: "💊" },
+    { id: "gyms", name: "Gyms", icon: "💪" },
+    { id: "beauty", name: "Beauty & Spa", icon: "💄" }
+  ];
+
   const handleEventClick = (event: Event): void => {
     setSelectedEvent(event);
     setShowRSVP(true);
@@ -62,6 +81,7 @@ const EventDiscoveryApp: React.FC = () => {
   };
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const handleRSVPSubmit = (): void => {
     if (selectedEvent?.isPaid) {
@@ -84,6 +104,53 @@ const EventDiscoveryApp: React.FC = () => {
 
   const handleInputChange = (field: keyof FormData, value: string): void => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Google Places handlers
+  const handlePlaceSelect = (place: GooglePlace): void => {
+    setSelectedPlace(place);
+    setShowPlaceDetails(true);
+  };
+
+  const handleSearchSubmit = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    await handleSearch();
+  };
+
+  const handleCategoryChange = async (categoryId: string): Promise<void> => {
+    setSelectedCategory(categoryId);
+    try {
+      const location = await getCurrentLocation();
+      await getPlacesByCategory(categoryId, location);
+    } catch {
+      // If geolocation fails, use default Abuja location
+      await getPlacesByCategory(categoryId);
+    }
+  };
+
+  // Load default category on component mount and handle URL search params
+  useEffect(() => {
+    const searchFromUrl = searchParams.get('search');
+    if (searchFromUrl) {
+      setSearchQuery(searchFromUrl);
+      handleSearch(searchFromUrl);
+    } else {
+      handleCategoryChange("restaurants");
+    }
+  }, [searchParams]);
+
+  // Helper function to handle search with string parameter
+  const handleSearch = async (query?: string): Promise<void> => {
+    const searchTerm = query || searchQuery;
+    if (searchTerm.trim()) {
+      try {
+        const location = await getCurrentLocation();
+        await searchByQuery(searchTerm, location);
+      } catch {
+        // If geolocation fails, search without location (will use Abuja as default)
+        await searchByQuery(searchTerm);
+      }
+    }
   };
 
   const events: Event[] = [
@@ -112,15 +179,6 @@ const EventDiscoveryApp: React.FC = () => {
     },
   ];
 
-  const places: Place[] = [
-    {
-      id: 1,
-      name: "Café Aroma",
-      category: "Dining",
-      location: "Wuse II",
-      image: "/api/placeholder/100/100",
-    },
-  ];
 
   const collections: Collection[] = [
     {
@@ -159,55 +217,134 @@ const EventDiscoveryApp: React.FC = () => {
           </TabsList>
 
           <TabsContent value="explore" className="space-y-6">
-            <h2 className="text-2xl font-semibold text-text-primary mb-6">
-              Explore Nearby
-            </h2>
-            <div className="space-y-4">
-              {places.map((place: Place) => (
-                <div
-                  key={place.id}
-                  className="flex items-center space-x-4 p-4 bg-white rounded-lg shadow-sm border border-border-primary"
-                >
-                  <div className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0">
-                    <img
-                      src={place.image}
-                      alt={place.name}
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-text-primary">
-                      {place.name}
-                    </h3>
-                    <p className="text-gray-600">
-                      Category: {place.category} • Location: {place.location}
-                    </p>
-                  </div>
+            {/* Search Bar */}
+            <div className="sticky top-0 bg-white z-10 pb-4">
+              <form onSubmit={handleSearchSubmit} className="flex space-x-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search for places, restaurants, hotels..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
-              ))}
-
-              {events.map((event: Event) => (
-                <div
-                  key={event.id}
-                  className="flex items-center space-x-4 p-4 bg-white rounded-lg shadow-sm border border-border-primary cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => handleEventClick(event)}
-                >
-                  <div className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0">
-                    <img
-                      src={event.image}
-                      alt={event.title}
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold">{event.title}</h3>
-                    <p className="text-gray-600">
-                      Date: July 12 • Location: {event.location}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                </Button>
+              </form>
             </div>
+
+            {/* Category Filters */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Explore by Category</h3>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                {categories.map((category) => (
+                  <Button
+                    key={category.id}
+                    variant={selectedCategory === category.id ? "default" : "outline"}
+                    onClick={() => handleCategoryChange(category.id)}
+                    className={`h-auto p-3 flex flex-col items-center space-y-1 ${
+                      selectedCategory === category.id ? "bg-blue-600 hover:bg-blue-700" : ""
+                    }`}
+                    disabled={loading}
+                  >
+                    <span className="text-lg">{category.icon}</span>
+                    <span className="text-xs text-center">{category.name}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Results */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">
+                  {searchQuery ? `Search Results for "${searchQuery}"` : categories.find(c => c.id === selectedCategory)?.name || "Places"}
+                </h2>
+                {googlePlaces.length > 0 && (
+                  <Badge variant="secondary">
+                    {googlePlaces.length} places found
+                  </Badge>
+                )}
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                  <p className="text-red-700">{error}</p>
+                </div>
+              )}
+
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                    <span className="text-gray-600">Finding places near you...</span>
+                  </div>
+                </div>
+              ) : googlePlaces.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {googlePlaces.map((place) => (
+                    <PlaceCard
+                      key={place.place_id}
+                      place={place}
+                      onSelect={handlePlaceSelect}
+                    />
+                  ))}
+                </div>
+              ) : !loading && (
+                <div className="text-center py-12">
+                  <MapIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No places found</h3>
+                  <p className="text-gray-600 mb-4">
+                    {searchQuery
+                      ? "Try adjusting your search terms or explore different categories"
+                      : "Try selecting a different category or searching for specific places"
+                    }
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setSearchQuery("");
+                      handleCategoryChange("restaurants");
+                    }}
+                    variant="outline"
+                  >
+                    Browse Restaurants
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Legacy Events Section */}
+            {events.length > 0 && (
+              <div className="pt-8 border-t">
+                <h3 className="text-lg font-semibold mb-4">Featured Events</h3>
+                <div className="space-y-4">
+                  {events.map((event: Event) => (
+                    <div
+                      key={event.id}
+                      className="flex items-center space-x-4 p-4 bg-white rounded-lg shadow-sm border border-border-primary cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => handleEventClick(event)}
+                    >
+                      <div className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0">
+                        <img
+                          src={event.image}
+                          alt={event.title}
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold">{event.title}</h3>
+                        <p className="text-gray-600">
+                          Date: July 12 • Location: {event.location}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="events" className="space-y-6">
@@ -269,6 +406,16 @@ const EventDiscoveryApp: React.FC = () => {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Place Details Modal */}
+        <PlaceDetails
+          place={selectedPlace}
+          isOpen={showPlaceDetails}
+          onClose={() => {
+            setShowPlaceDetails(false);
+            setSelectedPlace(null);
+          }}
+        />
 
         {/* Event Detail Modal */}
         <Dialog open={showRSVP} onOpenChange={setShowRSVP}>
