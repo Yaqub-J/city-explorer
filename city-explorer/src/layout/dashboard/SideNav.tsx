@@ -164,13 +164,13 @@ function SideNav({ drawerWidth, handleDrawerToggle, mobileOpen }: Props) {
   const navItems = getUserNavItems(userRole);
 
   const drawer = (
-    <div className="flex flex-col h-full bg-background border-r border-border">
+    <div className="flex flex-col h-full bg-blue-50 dark:bg-blue-950 border-r border-border">
       {/* Logo section */}
       <div className="p-6 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Map className="w-4 h-4 text-primary-foreground" />
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Map className="w-4 h-4 text-white" />
             </div>
             <span className="text-lg font-bold text-foreground">
               City Explorer
@@ -200,10 +200,10 @@ function SideNav({ drawerWidth, handleDrawerToggle, mobileOpen }: Props) {
                 <NavLink
                   to={item.link}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent",
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-blue-100 dark:hover:bg-blue-900",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-blue-600 text-white shadow-md"
+                      : "text-slate-600 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300"
                   )}
                   onClick={handleDrawerToggle}
                 >

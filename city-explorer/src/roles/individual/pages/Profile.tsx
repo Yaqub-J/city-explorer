@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  User,
   Star,
   Camera,
   CreditCard,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface MenuItem {
   id: string;
@@ -25,14 +25,31 @@ interface MenuItem {
 const Profile: React.FC = () => {
   const [activeSection, setActiveSection] = useState<string>("favorites");
   const navigate = useNavigate();
+  const { profile, user } = useAuth();
+
+  // Calculate profile completion percentage
+  const calculateProfileCompletion = () => {
+    if (!profile) return 0;
+    let completed = 0;
+    const fields = ['full_name', 'phone', 'address', 'city'];
+    fields.forEach(field => {
+      if (profile[field as keyof typeof profile]) completed++;
+    });
+    if (profile.avatar_url) completed++;
+    return Math.round((completed / (fields.length + 1)) * 100);
+  };
 
   const profileData = {
-    name: "Aisha Eeshat",
-    bio: "A fun and outdoor lover. Techie",
-    points: 97,
-    reviews: 797,
-    photos: 16,
-    profileCompletion: 70,
+    name: profile?.full_name || user?.email?.split('@')[0] || "User",
+    bio: profile?.role === 'business' ? "Business Owner" : "Explorer",
+    email: profile?.email || user?.email || "",
+    phone: profile?.phone || "",
+    address: profile?.address || "",
+    city: profile?.city || "",
+    points: 97, // TODO: Implement points system
+    reviews: 797, // TODO: Get from reviews table
+    photos: 16, // TODO: Get from uploaded photos
+    profileCompletion: calculateProfileCompletion(),
   };
 
   const favoriteMenuItems: MenuItem[] = [
@@ -112,8 +129,18 @@ const Profile: React.FC = () => {
       <div className="p-6 ">
         <div className="flex items-start space-x-4 bg-bg-primary border border-border-primary p-6 rounded-lg">
           {/* Profile Avatar */}
-          <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
-            <User className="w-8 h-8 text-gray-400" />
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center overflow-hidden">
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={profileData.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-blue-600 text-xl font-bold">
+                {profileData.name.charAt(0).toUpperCase()}
+              </span>
+            )}
           </div>
 
           {/* Profile Info */}
@@ -156,7 +183,7 @@ const Profile: React.FC = () => {
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
-                  className={`bg-bg-primary-dark2 h-2 w-${profileData.profileCompletion}% rounded-full transition-all duration-300`}
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${profileData.profileCompletion}%` }}
                 />
               </div>

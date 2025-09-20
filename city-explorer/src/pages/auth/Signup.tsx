@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Loader2, Mail, Lock, Eye, EyeOff, User } from 'lucide-react'
+import { Loader2, Mail, Lock, Eye, EyeOff, User, Map } from 'lucide-react'
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -75,8 +75,8 @@ export default function Signup() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-2xl font-bold text-primary-foreground">CE</span>
+            <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Map className="w-6 h-6 text-white" />
             </div>
           </div>
           <CardTitle className="text-2xl text-center">Create account</CardTitle>

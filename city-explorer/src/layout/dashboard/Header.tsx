@@ -127,8 +127,14 @@ function Header({ drawerWidth, handleDrawerToggle }: Props) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                 <Avatar className="h-9 w-9">
-                  <AvatarImage src="/avatars/01.png" alt="@mubarak" />
-                  <AvatarFallback>MB</AvatarFallback>
+                  <AvatarImage
+                    src={profile?.avatar_url || undefined}
+                    alt={profile?.full_name || 'User'}
+                  />
+                  <AvatarFallback className="bg-blue-100 text-blue-600 font-bold">
+                    {profile?.full_name?.charAt(0)?.toUpperCase() ||
+                     profile?.email?.charAt(0)?.toUpperCase() || 'U'}
+                  </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
