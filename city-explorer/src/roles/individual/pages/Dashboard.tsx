@@ -1,42 +1,16 @@
-import { useState } from "react";
-import { Search, MapPin, Pizza, Store } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, MapPin, Pizza, Store, TrendingUp, Users, Calendar, Star } from "lucide-react";
 import { useNavigate } from "react-router";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
+import { BusinessService, type Business } from "@/services/businessService";
+import { EventService } from "@/services/eventService";
+import { FavoriteService } from "@/services/favoriteService";
+import { ReviewService } from "@/services/reviewService";
 
-// Mock data
-const mockBusinesses = [
-  {
-    id: 1,
-    businessName: "Burger Palace",
-    category: "Dining",
-    description: "Best burgers in town with 50% off your first order",
-    location: "Downtown",
-    color: "bg-bg-primary-dark2",
-  },
-  {
-    id: 2,
-    businessName: "Tech Solutions",
-    category: "Services",
-    description: "Professional IT support and computer repairs available",
-    location: "City Center",
-    color: "bg-bg-primary-dark2",
-  },
-  {
-    id: 3,
-    businessName: "Fresh Smoothies",
-    category: "Dining",
-    description: "Healthy smoothies made with fresh organic fruits",
-    location: "Mall Plaza",
-    color: "bg-bg-primary-dark2",
-  },
-  {
-    id: 4,
-    businessName: "Style Studio",
-    category: "Services",
-    description: "Premium hair styling and beauty treatments",
-    location: "Fashion District",
-    color: "bg-bg-primary-dark2",
-  },
-];
 
 const categories = [
   {
@@ -80,126 +54,265 @@ const categories = [
 // ];
 
 const Dashboard = () => {
-  const [activeCategory, setActiveCategory] = useState(1);
+  const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    favoriteCount: 0,
+    reviewCount: 0,
+    eventCount: 0,
+  });
+
+  const { profile } = useAuth();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Load businesses
+      const businessData = await BusinessService.getBusinesses({
+        limit: 6,
+        verified: true
+      });
+      setBusinesses(businessData || []);
+
+      // Load user stats if authenticated
+      if (profile) {
+        const [favoriteCount, userReviews, userEvents] = await Promise.all([
+          FavoriteService.getUserFavoritesCount(),
+          ReviewService.getReviewsByUser(profile.id),
+          EventService.getEvents({ limit: 100 }) // Get events to count attended ones
+        ]);
+
+        setStats({
+          favoriteCount,
+          reviewCount: userReviews?.length || 0,
+          eventCount: userEvents?.length || 0,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredBusinesses = businesses.filter(business => {
+    if (activeCategory === "All") return true;
+    return business.category === activeCategory;
+  });
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+
+    try {
+      const searchResults = await BusinessService.searchBusinesses(searchQuery, {
+        category: activeCategory === "All" ? undefined : activeCategory,
+        limit: 10
+      });
+      setBusinesses(searchResults || []);
+    } catch (error) {
+      console.error('Search error:', error);
+    }
+  };
+
+  const dashboardStats = [
+    {
+      title: "Saved Places",
+      value: stats.favoriteCount.toString(),
+      icon: Star,
+      change: "+3",
+      changeType: "positive" as const,
+    },
+    {
+      title: "Reviews Written",
+      value: stats.reviewCount.toString(),
+      icon: Users,
+      change: `+${stats.reviewCount}`,
+      changeType: "positive" as const,
+    },
+    {
+      title: "Events Discovered",
+      value: stats.eventCount.toString(),
+      icon: Calendar,
+      change: "+5",
+      changeType: "positive" as const,
+    },
+    {
+      title: "Cities Explored",
+      value: "3",
+      icon: TrendingUp,
+      change: "+1",
+      changeType: "positive" as const,
+    },
+  ];
+
   return (
-    <div>
-      {/* Header */}
-      <div className="flex justify-between">
-        <h3 className="font-bold">Good morning, Mubarak</h3>
+    <div className="space-y-6">
+      {/* Welcome Header */}
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">
+          Good morning, {profile?.full_name || 'Explorer'}
+        </h1>
+        <p className="text-muted-foreground">
+          Welcome back! Here's what's happening in your city today.
+        </p>
       </div>
 
-      {/* Hero Section */}
-      <div className="mx-6 my-6">
-        <div className="bg-gradient-to-r from-bg-primary-dark2 to-bg-primary-dark rounded-2xl p-6 md:p-8 relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 max-w-md">
-              <h2 className="text-white text-2xl md:text-3xl font-bold mb-4 leading-tight">
-                Plan your next outing or find local services around the city
-              </h2>
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {dashboardStats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={stat.title}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {stat.title}
+                </CardTitle>
+                <Icon className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-emerald-600">{stat.change}</span> this month
+                </p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search for restaurants, hotels..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 rounded-xl bg-white text-text-primary placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
-                />
-              </div>
-            </div>
+      {/* Hero Search Section */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="bg-gradient-to-r from-primary to-primary/80 rounded-lg p-6 text-primary-foreground">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 max-w-md space-y-4">
+                <h2 className="text-2xl md:text-3xl font-bold leading-tight">
+                  Discover amazing places and events in your city
+                </h2>
 
-            <div className="hidden md:block ml-8">
-              <div className="w-48 h-48 relative">
-                <div className="w-full h-full bg-gradient-to-br from-bg-primary-dark2 to-bg-primary-dark rounded-full flex items-center justify-center shadow-2xl">
-                  <Pizza className="w-24 h-24 text-white" />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search for restaurants, events, services..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                      className="pl-10 bg-background text-foreground"
+                    />
+                  </div>
+                  <Button onClick={handleSearch} size="default">
+                    Search
+                  </Button>
                 </div>
-                <div className="absolute -top-2 -left-2 w-16 h-16 bg-green-400 rounded-full opacity-80"></div>
-                <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-red-400 rounded-full opacity-80"></div>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Explore Categories */}
-      <div className="mx-6 mb-6">
-        <h3 className="font-bold mb-4">Explore</h3>
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => setActiveCategory(category.id)}
-              className={`px-6 py-3 rounded-xl font-medium whitespace-nowrap transition-all ${
-                activeCategory === category.id
-                  ? `${category.color} text-white`
-                  : "bg-white text-text-primary hover:bg-gray-100"
-              }`}
-            >
-              {category.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Featured Deals */}
-      <div className="mx-6 mb-8">
-        <h3 className="font-bold mb-6">Featured Businesses</h3>
-        <div className="grid md:grid-cols-2 gap-6">
-          {mockBusinesses.map((business) => (
-            <div
-              key={business.id}
-              className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/business/${business.id}`)}
-            >
-              <div className="flex items-start gap-4">
-                <div
-                  className={`w-16 h-16 ${business.color} rounded-xl flex items-center justify-center flex-shrink-0`}
-                >
-                  <Store className="w-8 h-8 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-lg font-semibold text-blue-600 mb-1">
-                    {business.businessName}
-                  </h4>
-                  <span className="inline-block bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-sm font-medium mb-2">
-                    {business.category}
-                  </span>
-                  <p className="text-gray-600 text-sm leading-relaxed">
-                    {business.description}
-                  </p>
-                  <div className="flex items-center mt-2 text-gray-500 text-sm">
-                    <MapPin className="w-4 h-4 mr-1" />
-                    {business.location}
+              <div className="hidden md:block ml-8">
+                <div className="w-32 h-32 relative">
+                  <div className="w-full h-full bg-background/10 rounded-full flex items-center justify-center">
+                    <Pizza className="w-16 h-16" />
                   </div>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Bottom Category Icons */}
-      {/* <div className="mx-6 mb-8">
-        <div className="flex justify-center gap-8 md:gap-12">
-          {bottomCategories.map((category) => (
-            <div key={category.id} className="text-center cursor-pointer group">
-              <div
-                className={`w-16 h-16 ${category.color} rounded-2xl flex items-center justify-center mb-2 group-hover:scale-105 transition-transform shadow-lg`}
+      {/* Category Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Explore Categories</CardTitle>
+          <CardDescription>Find what you're looking for</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {categories.map((category) => (
+              <Button
+                key={category.name}
+                variant={activeCategory === category.name ? "default" : "outline"}
+                onClick={() => setActiveCategory(category.name)}
+                className="whitespace-nowrap"
               >
-                <div className="text-white">{category.icon}</div>
-              </div>
-              <p className="text-sm font-medium text-gray-700">
                 {category.name}
-              </p>
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Featured Businesses */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Featured Businesses</CardTitle>
+          <CardDescription>Popular places in your area</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-muted-foreground mt-2">Loading businesses...</p>
             </div>
-          ))}
-        </div>
-      </div> */}
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {filteredBusinesses.map((business) => (
+                <Card
+                  key={business.id}
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => navigate(`/business/${business.id}`)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Store className="w-6 h-6 text-primary-foreground" />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-semibold">{business.name}</h4>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary">{business.category}</Badge>
+                            {business.verified && (
+                              <Badge variant="default" className="text-xs">
+                                ✓ Verified
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {business.description || "Discover what this business has to offer"}
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <MapPin className="w-4 h-4 mr-1" />
+                            {business.city}
+                          </div>
+                          {business.rating > 0 && (
+                            <div className="flex items-center text-sm">
+                              <Star className="w-4 h-4 mr-1 fill-yellow-400 text-yellow-400" />
+                              <span>{business.rating.toFixed(1)}</span>
+                              <span className="text-muted-foreground ml-1">
+                                ({business.total_reviews})
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
