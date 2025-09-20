@@ -9,7 +9,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/context/ToastContext";
-import { Calendar, MapPin, Clock } from "lucide-react";
+import { Calendar, MapPin } from "lucide-react";
 
 const BusinessEvents = () => {
   const [showAddModal, setShowAddModal] = useState(false);

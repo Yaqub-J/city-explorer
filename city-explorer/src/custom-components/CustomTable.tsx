@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Filter,
   Users,
-  ListPlus,
   Trash,
   X,
   Check,
@@ -195,7 +194,6 @@ const CustomTable: React.FC<CustomTableProps> = ({
                             onChange={(e) =>
                               handleFilterChange(column.key, e.target.value)
                             }
-                            size="sm"
                           />
                         </div>
                       ))}

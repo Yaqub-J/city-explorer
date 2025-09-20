@@ -31,14 +31,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { showSuccessToast, showErrorToast } from "@/custom-components/Toast";
 import CustomSelect from "@/custom-components/CustomSelect";
 import CustomOverviewCard from "@/custom-components/CustomOverviewCard";
@@ -48,12 +40,9 @@ import CustomSuccessModal from "@/custom-components/CustomSuccessModal";
 import CustomTable from "@/custom-components/CustomTable";
 import {
   Star,
-  Heart,
   Users,
   Settings,
   ChevronDown,
-  Play,
-  Pause,
   ShoppingCart,
 } from "lucide-react";
 
@@ -151,7 +140,7 @@ const ComponentShowcase: React.FC = () => {
                 options={selectOptions}
                 placeholder="Choose a fruit"
                 value={selectValue}
-                onChange={setSelectValue}
+                onChange={(value: string | number) => setSelectValue(value.toString())}
               />
             </div>
           </div>
