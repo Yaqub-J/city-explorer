@@ -5,7 +5,7 @@ import { useSelector } from "react-redux";
 import { useAppDispatch } from "../app/hooks";
 import { login, selectCurrentUser } from "@/auth/authSlice";
 import Layout from "@/layout/dashboard/Layout";
-import Login from "@/auth/Login";
+import Login from "@/pages/auth/Login";
 import BusinessDashboard from "@/roles/business/pages/BusinessDashboard";
 import BusinessEvents from "@/roles/business/pages/BusinessEvents";
 import BusinessDeals from "@/roles/business/pages/BusinessDeals";
@@ -22,7 +22,7 @@ import BusinessPage from "@/roles/business/pages/BusinessPage";
 import Interests from "@/roles/individual/pages/Interests";
 import EditProfile from "@/roles/individual/pages/EditProfile";
 import PaymentPage from "@/roles/individual/pages/PaymentPage";
-import Signup from "@/auth/Signup";
+import Signup from "@/pages/auth/Signup";
 // Organization routes
 
 type ProtectedRoute = {
